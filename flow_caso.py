@@ -1,10 +1,12 @@
 import numpy as np
+import prefect
 import requests
 import pandas as pd
 import yfinance as yf
 import pyodbc
 from prefect import task, Flow
 from datetime import date
+from prefect.tasks.secrets import PrefectSecret
 
 
 tickers = ['NVDA', 'TSLA', 'MSFT', 'AMZN', 'AMD', 'INTC']
@@ -60,7 +62,7 @@ def transform(raw_dfs, tickers, today):
 
 
 @task
-def load(tablon, today):
+def load(tablon, today,credentials):
     num_rows_tablon = len(tablon.index)
 
     if num_rows_tablon != 1:
@@ -104,10 +106,10 @@ def load(tablon, today):
     server = 'ALVARO\SQLSERVER19'
     database = 'caso_nasdaq_btc'
     user = 'sa'
-    password = '1218'#secreto clave: pwd_sql
+    #password = '1218'  # secreto clave: pwd_sql
 
-    cnxn = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER=' +
-                          server+';DATABASE='+database+';UID='+user+';PWD=' + password)
+    cnxn = pyodbc.connect(
+        driver='{SQL Server}', server=server, database=database, uid=user, pwd=credentials)
 
     cursor = cnxn.cursor()
     cursor.execute(sql_create_valores_btc)
@@ -128,7 +130,8 @@ def load(tablon, today):
 
     for index, row in tablon.iterrows():
         cursor.execute('INSERT INTO dbo.btcvalores VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )', row.tolist())
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )', row.tolist())
+
         cnxn.commit()
     cursor.close()
     cnxn.close()
@@ -138,8 +141,9 @@ with Flow("ETL Caso") as flow:
     tickers = ['NVDA', 'TSLA', 'MSFT', 'AMZN', 'AMD', 'INTC']
     today = date.today()
     today = today.strftime('%Y-%m-%d')
+    credentials= PrefectSecret('pwd_sql')
     raw_dfs = extract(tickers, today)
     tablon = transform(raw_dfs, tickers, today)
-    load(tablon, today)
+    load(tablon, today,credentials)
 
 flow.run()
