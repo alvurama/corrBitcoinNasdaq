@@ -125,12 +125,12 @@ def load(tablon, today,credentials):
         return
 
     # 3.4
-    #tablon.insert(0, 'fecha', today)
+    tablon.insert(0, 'fecha', today)
     tablon['fecha'] = tablon.index
 
     for index, row in tablon.iterrows():
-        cursor.execute('INSERT INTO dbo.btcvalores VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )', row.tolist())
+        cursor.execute(
+            'INSERT INTO dbo.btcvalores VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', row.tolist())
 
         cnxn.commit()
     cursor.close()
@@ -146,4 +146,5 @@ with Flow("ETL Caso") as flow:
     tablon = transform(raw_dfs, tickers, today)
     load(tablon, today,credentials)
 
+#flow.register(project_name='caso_BTC')
 flow.run()
